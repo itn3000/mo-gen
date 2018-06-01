@@ -1,0 +1,4 @@
+*.cs text=auto
+*.csproj text=auto
+*.md text=auto
+*.txt text=auto
