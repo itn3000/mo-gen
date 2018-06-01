@@ -19,6 +19,13 @@ The goal of this project is merged into [MagicOnion](https://github.com/neuecc/M
 
 run `dotnet mo-gen --help` 
 
+## Difference from MagicOnion.CodeGenerator
+
+* build as dotnet global tools
+    * do not need Mono in Mac
+* use [Buidalyzer](https://github.com/daveaglick/Buildalyzer) instead of MSBuildWorkspace
+* add `-h|--help` option
+
 # Related links
 
 * [MagicOnion Repository](https://github.com/neuecc/MagicOnion)
