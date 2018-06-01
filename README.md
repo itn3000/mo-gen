@@ -1,6 +1,7 @@
 # The MagicOnion code generator
 
 This is the fork of MagicOnion.CodeGenerator.
+The goal of this project is merged into [MagicOnion](https://github.com/neuecc/MagicOnion/)'s code generator .
 
 # How to use
 
