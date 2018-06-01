@@ -21,7 +21,7 @@ run `dotnet mo-gen --help`
 
 ## Difference from MagicOnion.CodeGenerator
 
-* build as dotnet global tools
+* build as [dotnet global tools](https://docs.microsoft.com/en-us/dotnet/core/tools/global-tools)
     * do not need Mono in Mac
 * use [Buidalyzer](https://github.com/daveaglick/Buildalyzer) instead of MSBuildWorkspace
 * add `-h|--help` option
