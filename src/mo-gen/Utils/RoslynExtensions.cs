@@ -11,14 +11,31 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using MagicOnion.Utils;
 using Buildalyzer;
+using Microsoft.Build.Utilities;
+using Microsoft.Build.Framework;
 
 namespace MagicOnion
 {
     // Utility and Extension methods for Roslyn
     internal static class RoslynExtensions
     {
-        public static async Task<Compilation> GetCompilationFromProject(string csprojPath,
-            params string[] preprocessorSymbols)
+        static LoggerVerbosity ToLoggerVerbosity(this int value)
+        {
+            switch(value)
+            {
+                case 1:
+                    return LoggerVerbosity.Minimal;
+                case 2:
+                    return LoggerVerbosity.Normal;
+                case 3:
+                    return LoggerVerbosity.Detailed;
+                case 0:
+                default:
+                    return LoggerVerbosity.Quiet;
+            }
+        }
+        public static async Task<Compilation> GetCompilationFromProject(string csprojPath, int verbosityLevel,
+            Dictionary<string, string> additionalProperties)
         {
             // fucking workaround of resolve reference...
             var externalReferences = new List<PortableExecutableReference>();
@@ -57,17 +74,47 @@ namespace MagicOnion
             }
 
             EnvironmentHelper.Setup();
-            var manager = new AnalyzerManager();
+            var analyzerOptions = new AnalyzerManagerOptions();
+            analyzerOptions.LoggerVerbosity = verbosityLevel.ToLoggerVerbosity();
+            if (verbosityLevel > 0)
+            {
+                analyzerOptions.LogWriter = Console.Out;
+            }
+            var manager = new AnalyzerManager(analyzerOptions);
             var projectAnalyzer = manager.GetProject(csprojPath);
+            if(additionalProperties != null)
+            {
+                foreach(var kv in additionalProperties)
+                {
+                    projectAnalyzer.SetGlobalProperty(kv.Key, kv.Value);
+                }
+            }
+            var compiledProject = projectAnalyzer.Compile();
+            var ws = new AdhocWorkspace();
+            if(compiledProject == null)
+            {
+                throw new Exception("project compilation failed");
+            }
+            
             var workspace = projectAnalyzer.GetWorkspace();
             workspace.WorkspaceFailed += WorkSpaceFailed;
-            
             var project = workspace.CurrentSolution.Projects.First();
-            project = project.AddMetadataReferences(externalReferences); // workaround:)
-            project = project.WithParseOptions(
-                (project.ParseOptions as CSharpParseOptions).WithPreprocessorSymbols(preprocessorSymbols));
-
+            project = project.AddMetadataReferences(externalReferences);
+            {
+                var opt = project.ParseOptions as CSharpParseOptions;
+                if(opt != null)
+                {
+                    var defineconstants = compiledProject.Properties.Where(x => x.Name == "DefineConstants").SelectMany(x => x.EvaluatedValue.Split(";"));
+                    opt.WithPreprocessorSymbols(defineconstants);
+                    Console.WriteLine($"{opt.LanguageVersion}");
+                    Console.WriteLine($"{string.Join("|", opt.PreprocessorSymbolNames)}");
+                }
+            }
             var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
+            foreach(var tn in compilation.GetNamedTypeSymbols())
+            {
+                Console.WriteLine($"{tn.Name}");
+            }
             return compilation;
         }
 
