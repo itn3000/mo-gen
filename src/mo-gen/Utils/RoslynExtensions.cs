@@ -105,7 +105,9 @@ namespace MagicOnion
                 if(opt != null)
                 {
                     var defineconstants = compiledProject.Properties.Where(x => x.Name == "DefineConstants").SelectMany(x => x.EvaluatedValue.Split(";"));
-                    opt.WithPreprocessorSymbols(defineconstants);
+                    var langVersion = compiledProject.Properties.Where(x => x.Name == "LangVersion").Select(x => x).FirstOrDefault();
+                    opt = opt.WithLanguageVersion(LanguageVersion.CSharp7);
+                    opt = opt.WithPreprocessorSymbols(defineconstants);
                     Console.WriteLine($"{opt.LanguageVersion}");
                     Console.WriteLine($"{string.Join("|", opt.PreprocessorSymbolNames)}");
                 }
