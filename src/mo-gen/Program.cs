@@ -20,16 +20,17 @@ namespace MagicOnion.CodeGenerator
         public string OutputPath { get; private set; }
         public bool UnuseUnityAttr { get; private set; }
         public bool IsAsyncSuffix { get; private set; }
-        public List<string> ConditionalSymbols { get; private set; }
+        public Dictionary<string, string> AdditionalProperties { get; private set; } = new Dictionary<string, string>();
         public string NamespaceRoot { get; private set; }
 
         public bool IsParsed { get; set; }
 
         public bool IsHelp { get; private set; } = false;
+        public int VerbosityLevel { get; private set; } = 0;
+        public List<string> ConditionalSymbols = new List<string>();
 
         public CommandlineArguments(string[] args)
         {
-            ConditionalSymbols = new List<string>();
             NamespaceRoot = "MagicOnion";
             IsAsyncSuffix = false;
 
@@ -38,9 +39,38 @@ namespace MagicOnion.CodeGenerator
                 { "i|input=", "[required]Input path of analyze csproj", x => { InputPath = x; } },
                 { "o|output=", "[required]Output path(file) or directory base(in separated mode)", x => { OutputPath = x; } },
                 { "u|unuseunityattr", "[optional, default=false]Unuse UnityEngine's RuntimeInitializeOnLoadMethodAttribute on MagicOnionInitializer", _ => { UnuseUnityAttr = true; } },
-                { "c|conditionalsymbol=", "[optional, default=empty]conditional compiler symbol", x => { ConditionalSymbols.AddRange(x.Split(',')); } },
                 { "n|namespace=", "[optional, default=MagicOnion]Set namespace root name", x => { NamespaceRoot = x; } },
                 { "a|asyncsuffix", "[optional, default=false]Use methodName to async suffix", _ => { IsAsyncSuffix = true; } },
+                { "c|conditionalsymbol=", "[optional, default=empty]conditional compiler symbol list separated by ','", x => ConditionalSymbols.AddRange(x.Split(",")) },
+                { "v|verbose=", "[optional, default=None]project compilation output verbosity level(None,Minimal,Normal,Detailed)", level => {
+                        switch(level.ToLower())
+                        {
+                            case "none":
+                                VerbosityLevel = 0;
+                                break;
+                            case "minimal":
+                                VerbosityLevel = 1;
+                                break;
+                            case "normal":
+                                VerbosityLevel = 2;
+                                break;
+                            case "detailed":
+                                VerbosityLevel = 3;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                },
+                {"p|property=", "[optional, default=empty]Additional MSBuild properties(Key=Value, whitespace will be trimmed)", p =>
+                    {
+                        var splitted = p.Split('=', 2);
+                        if(splitted != null && splitted.Length == 2)
+                        {
+                            AdditionalProperties[splitted[0].Trim()] = splitted[1].Trim();
+                        }
+                    }
+                },
                 { "h|help", "get help", _ => { IsHelp = true; } },
             };
             if (args.Length == 0)
@@ -51,7 +81,7 @@ namespace MagicOnion.CodeGenerator
             {
                 option.Parse(args);
 
-                if(IsHelp)
+                if (IsHelp)
                 {
                     goto SHOW_HELP;
                 }
@@ -67,7 +97,7 @@ namespace MagicOnion.CodeGenerator
                 return;
             }
 
-            SHOW_HELP:
+        SHOW_HELP:
             Console.WriteLine("moc arguments help:");
             option.WriteOptionDescriptions(Console.Out);
             IsParsed = false;
@@ -90,7 +120,7 @@ namespace MagicOnion.CodeGenerator
             var sw = Stopwatch.StartNew();
             Console.WriteLine("Project Compilation Start:" + cmdArgs.InputPath);
 
-            var collector = new MethodCollector(cmdArgs.InputPath, cmdArgs.ConditionalSymbols);
+            var collector = new MethodCollector(cmdArgs.InputPath, cmdArgs.VerbosityLevel, cmdArgs.AdditionalProperties, cmdArgs.ConditionalSymbols);
 
             Console.WriteLine("Project Compilation Complete:" + sw.Elapsed.ToString());
             Console.WriteLine();
@@ -269,7 +299,7 @@ namespace MagicOnion.CodeGenerator
                     var enumType = method.UnwrappedOriginalResposneTypeSymbol as INamedTypeSymbol;
                     MakeEnum(enumType, enumInfos);
                 }
-                else if(namedResponse != null && namedResponse.IsGenericType)
+                else if (namedResponse != null && namedResponse.IsGenericType)
                 {
                     // generic type handling
                     var genericType = namedResponse.ConstructUnboundGenericType();

@@ -17,14 +17,19 @@ The goal of this project is merged into [MagicOnion](https://github.com/neuecc/M
 
 ## Usage
 
-run `dotnet mo-gen --help` 
+run `dotnet mo-gen --help`
 
-## Difference from MagicOnion.CodeGenerator
+### Usage Warning
+
+if you use multi targetted framework(TargetFrameworks), you must add `-p TargetFramework=[your targetframework]`.
+
+## Changes from MagicOnion.CodeGenerator
 
 * build as [dotnet global tools](https://docs.microsoft.com/en-us/dotnet/core/tools/global-tools)
     * do not need Mono in Mac
-* use [Buidalyzer](https://github.com/daveaglick/Buildalyzer) instead of MSBuildWorkspace
+* use [Buildalyzer](https://github.com/daveaglick/Buildalyzer) instead of MSBuildWorkspace
 * add `-h|--help` option
+* add `p|property` option
 
 # Related links
 
