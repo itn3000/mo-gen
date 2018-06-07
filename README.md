@@ -29,8 +29,6 @@ if you use multi targetted framework(TargetFrameworks), you must add `-p TargetF
     * do not need Mono in Mac
 * use [Buildalyzer](https://github.com/daveaglick/Buildalyzer) instead of MSBuildWorkspace
 * add `-h|--help` option
-* remove `c|conditionalsymbol=` option
-    * use `-p DefineConstants=[symbols separeted by ';']` instead
 * add `p|property` option
 
 # Related links

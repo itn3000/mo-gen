@@ -43,10 +43,10 @@ namespace MagicOnion.CodeAnalysis
         readonly ReferenceSymbols typeReferences;
         readonly INamedTypeSymbol baseInterface;
 
-        public MethodCollector(string csProjPath, int verbosityLevel, Dictionary<string, string> additionalProperties)
+        public MethodCollector(string csProjPath, int verbosityLevel, Dictionary<string, string> additionalProperties, IEnumerable<string> conditionalSymbols)
         {
             this.csProjPath = csProjPath;
-            var compilation = RoslynExtensions.GetCompilationFromProject(csProjPath, verbosityLevel, additionalProperties).GetAwaiter().GetResult();
+            var compilation = RoslynExtensions.GetCompilationFromProject(csProjPath, verbosityLevel, additionalProperties, conditionalSymbols).GetAwaiter().GetResult();
             this.typeReferences = new ReferenceSymbols(compilation);
 
             var marker = compilation.GetTypeByMetadataName("MagicOnion.IServiceMarker");

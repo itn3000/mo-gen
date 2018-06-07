@@ -27,6 +27,7 @@ namespace MagicOnion.CodeGenerator
 
         public bool IsHelp { get; private set; } = false;
         public int VerbosityLevel { get; private set; } = 0;
+        public List<string> ConditionalSymbols = new List<string>();
 
         public CommandlineArguments(string[] args)
         {
@@ -40,6 +41,7 @@ namespace MagicOnion.CodeGenerator
                 { "u|unuseunityattr", "[optional, default=false]Unuse UnityEngine's RuntimeInitializeOnLoadMethodAttribute on MagicOnionInitializer", _ => { UnuseUnityAttr = true; } },
                 { "n|namespace=", "[optional, default=MagicOnion]Set namespace root name", x => { NamespaceRoot = x; } },
                 { "a|asyncsuffix", "[optional, default=false]Use methodName to async suffix", _ => { IsAsyncSuffix = true; } },
+                { "c|conditionalsymbol=", "[optional, default=empty]conditional compiler symbol list separated by ','", x => ConditionalSymbols.AddRange(x.Split(",")) },
                 { "v|verbose=", "[optional, default=None]project compilation output verbosity level(None,Minimal,Normal,Detailed)", level => {
                         switch(level.ToLower())
                         {
@@ -118,7 +120,7 @@ namespace MagicOnion.CodeGenerator
             var sw = Stopwatch.StartNew();
             Console.WriteLine("Project Compilation Start:" + cmdArgs.InputPath);
 
-            var collector = new MethodCollector(cmdArgs.InputPath, cmdArgs.VerbosityLevel, cmdArgs.AdditionalProperties);
+            var collector = new MethodCollector(cmdArgs.InputPath, cmdArgs.VerbosityLevel, cmdArgs.AdditionalProperties, cmdArgs.ConditionalSymbols);
 
             Console.WriteLine("Project Compilation Complete:" + sw.Elapsed.ToString());
             Console.WriteLine();

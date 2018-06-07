@@ -21,7 +21,7 @@ namespace MagicOnion
     {
         static LoggerVerbosity ToLoggerVerbosity(this int value)
         {
-            switch(value)
+            switch (value)
             {
                 case 1:
                     return LoggerVerbosity.Minimal;
@@ -34,8 +34,52 @@ namespace MagicOnion
                     return LoggerVerbosity.Quiet;
             }
         }
+        static LanguageVersion ConvertLanguageVersion(string versionString)
+
+        {
+            if (string.IsNullOrEmpty(versionString))
+            {
+                return LanguageVersion.Default;
+            }
+            if (Version.TryParse(versionString, out var semver))
+            {
+                if (semver.Major < 7)
+                {
+                    return (LanguageVersion)semver.Major;
+                }
+                else if (semver.Major == 7)
+                {
+                    switch (semver.Minor)
+                    {
+                        case 0:
+                            return LanguageVersion.CSharp7;
+                        case 1:
+                            return LanguageVersion.CSharp7_1;
+                        case 2:
+                            return LanguageVersion.CSharp7_2;
+                        case 3:
+                            return LanguageVersion.CSharp7_3;
+                        default:
+                            return LanguageVersion.Latest;
+                    }
+                }
+                else
+                {
+                    return LanguageVersion.Latest;
+                }
+            }
+            else if (versionString == "latest")
+            {
+                return LanguageVersion.Latest;
+            }
+            else
+            {
+                return LanguageVersion.Default;
+            }
+        }
         public static async Task<Compilation> GetCompilationFromProject(string csprojPath, int verbosityLevel,
-            Dictionary<string, string> additionalProperties)
+            Dictionary<string, string> additionalProperties,
+            IEnumerable<string> conditionalSymbols)
         {
             // fucking workaround of resolve reference...
             var externalReferences = new List<PortableExecutableReference>();
@@ -82,41 +126,35 @@ namespace MagicOnion
             }
             var manager = new AnalyzerManager(analyzerOptions);
             var projectAnalyzer = manager.GetProject(csprojPath);
-            if(additionalProperties != null)
+            if (additionalProperties != null)
             {
-                foreach(var kv in additionalProperties)
+                foreach (var kv in additionalProperties)
                 {
                     projectAnalyzer.SetGlobalProperty(kv.Key, kv.Value);
                 }
             }
             var compiledProject = projectAnalyzer.Compile();
             var ws = new AdhocWorkspace();
-            if(compiledProject == null)
+            if (compiledProject == null)
             {
                 throw new Exception("project compilation failed");
             }
-            
+
             var workspace = projectAnalyzer.GetWorkspace();
             workspace.WorkspaceFailed += WorkSpaceFailed;
             var project = workspace.CurrentSolution.Projects.First();
             project = project.AddMetadataReferences(externalReferences);
+            var opt = project.ParseOptions as CSharpParseOptions;
+            if (opt != null)
             {
-                var opt = project.ParseOptions as CSharpParseOptions;
-                if(opt != null)
-                {
-                    var defineconstants = compiledProject.Properties.Where(x => x.Name == "DefineConstants").SelectMany(x => x.EvaluatedValue.Split(";"));
-                    var langVersion = compiledProject.Properties.Where(x => x.Name == "LangVersion").Select(x => x).FirstOrDefault();
-                    opt = opt.WithLanguageVersion(LanguageVersion.CSharp7);
-                    opt = opt.WithPreprocessorSymbols(defineconstants);
-                    Console.WriteLine($"{opt.LanguageVersion}");
-                    Console.WriteLine($"{string.Join("|", opt.PreprocessorSymbolNames)}");
-                }
+                var defineconstants = compiledProject.Properties.Where(x => x.Name == "DefineConstants").SelectMany(x => x.EvaluatedValue.Split(";"));
+                var langVersion = compiledProject.Properties.Where(x => x.Name == "LangVersion").Select(x => x).FirstOrDefault();
+                opt = opt.WithLanguageVersion(ConvertLanguageVersion(langVersion?.EvaluatedValue))
+                    .WithPreprocessorSymbols(defineconstants.Concat(conditionalSymbols))
+                    ;
+                project = project.WithParseOptions(opt);
             }
             var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
-            foreach(var tn in compilation.GetNamedTypeSymbols())
-            {
-                Console.WriteLine($"{tn.Name}");
-            }
             return compilation;
         }
 
