@@ -147,10 +147,27 @@ namespace MagicOnion
             var opt = project.ParseOptions as CSharpParseOptions;
             if (opt != null)
             {
-                var defineconstants = compiledProject.Properties.Where(x => x.Name == "DefineConstants").SelectMany(x => x.EvaluatedValue.Split(";"));
-                var langVersion = compiledProject.Properties.Where(x => x.Name == "LangVersion").Select(x => x).FirstOrDefault();
-                opt = opt.WithLanguageVersion(ConvertLanguageVersion(langVersion?.EvaluatedValue))
+                var defineconstants = compiledProject.GetPropertyValue("DefineConstants").Split(';');
+                var langVersion = compiledProject.GetPropertyValue("LangVersion");
+                var features = compiledProject.GetPropertyValue("Features").Split(';').Select(x =>
+                {
+                    var kv = x.Split('=', 2);
+                    if (kv.Length == 1)
+                    {
+                        return new KeyValuePair<string, string>(kv[0], "true");
+                    }
+                    else if (kv.Length > 1)
+                    {
+                        return new KeyValuePair<string, string>(kv[0], kv[1]);
+                    }
+                    else
+                    {
+                        return new KeyValuePair<string, string>(null, null);
+                    }
+                }).Where(x => x.Key != null).ToArray();
+                opt = opt.WithLanguageVersion(ConvertLanguageVersion(langVersion))
                     .WithPreprocessorSymbols(defineconstants.Concat(conditionalSymbols))
+                    .WithFeatures(features)
                     ;
                 project = project.WithParseOptions(opt);
             }
