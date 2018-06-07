@@ -4,15 +4,24 @@ using MagicOnion.Server;
 
 namespace mo_gen_test_project
 {
-    public interface IMyService : IService<IMyService>
+    public class MyRes
+    {
+        public int X;
+    }
+    public interface IMyService1 : IService<IMyService1>
     {
         UnaryResult<int> SumAsync(int x, int y);
     }
-    public class MyService : ServiceBase<IMyService>, IMyService
+    #if DEF1
+    public interface IMyService2 : IService<IMyService2>
     {
-        public async UnaryResult<int> SumAsync(int x, int y)
-        {
-            return x + y;
-        }
+        UnaryResult<int> Hoge(int x);
     }
+    #endif
+    #if DEF2
+    public interface IMyService3 : IService<IMyService3>
+    {
+        UnaryResult<int> Piyo(int x);
+    }
+    #endif
 }
