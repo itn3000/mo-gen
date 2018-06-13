@@ -3,11 +3,17 @@
 This is the fork of MagicOnion.CodeGenerator.
 The goal of this project is merged into [MagicOnion](https://github.com/neuecc/MagicOnion/)'s code generator .
 
+* [Nuget Package](https://www.nuget.org/packages/dotnet-mo-gen/)
+
 # How to use
 
 ## Prerequisits
 
 * [dotnet core sdk 2.1.300 or later](https://www.microsoft.com/net/download/windows)
+
+## Install from NuGet
+
+just do `dotnet tool install -g dotnet-mo-gen`
 
 ## Build
 
