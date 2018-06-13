@@ -1,0 +1,16 @@
+version: 1.0.{build}
+skip_tags: true
+init:
+  - git config --global core.autocrlf input
+configuration: Release
+image: Visual Studio 2017
+build:
+  project: mo-gen.sln
+  publish_nuget: true
+  publish_nuget_symbols: true
+install:
+  - dotnet restore
+deploy:
+- provider: NuGet
+  api_key:
+    secure: F67S4wlZEdRiowy0DR25bnfszCdcNsO3R6ykHeGTWEsl6iqXUJEx+W4M6tk6+iVP
