@@ -1,0 +1,10 @@
+version: 1.0.{build}
+skip_tags: true
+init:
+  - git config --global core.autocrlf input
+configuration: Release
+image: Visual Studio 2017
+build:
+  project: mo-gen.sln
+  publish_nuget: true
+  publish_nuget_symbols: true

@@ -8,6 +8,18 @@
     <PackAsTool>true</PackAsTool>
     <AssemblyName>dotnet-mo-gen</AssemblyName>
   </PropertyGroup>
+  <PropertyGroup>
+    <PackageVersion>0.1.0</PackageVersion>
+    <PackageId>dotnet-mo-gen</PackageId>
+    <Title>Unity client code generator for MagicOnion</Title>
+    <Authors>skitoy4321</Authors>
+    <Copyright>(C) 2018 skitoy4321</Copyright>
+    <PackageLicenseUrl>https://github.com/itn3000/mo-gen/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/itn3000/mo-gen</PackageProjectUrl>
+    <RepositoryType>github</RepositoryType>
+    <RepositoryUrl>https://github.com/itn3000/mo-gen</RepositoryUrl>
+    <PackageTags>generator;grpc;magiconion</PackageTags>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Buildalyzer" Version="0.4.0" />
