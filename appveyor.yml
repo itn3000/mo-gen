@@ -8,3 +8,5 @@ build:
   project: mo-gen.sln
   publish_nuget: true
   publish_nuget_symbols: true
+install:
+  - dotnet restore
