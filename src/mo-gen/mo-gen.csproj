@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp2.1;net462</TargetFrameworks>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
     <RootNamespace>MagicOnion.CodeGenerator</RootNamespace>
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
