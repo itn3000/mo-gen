@@ -133,7 +133,7 @@ namespace MagicOnion
                     projectAnalyzer.SetGlobalProperty(kv.Key, kv.Value);
                 }
             }
-            var compiledProject = projectAnalyzer.Compile();
+            var compiledProject = projectAnalyzer.Build().Project;
             var ws = new AdhocWorkspace();
             if (compiledProject == null)
             {
