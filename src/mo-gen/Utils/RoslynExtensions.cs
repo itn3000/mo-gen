@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using MagicOnion.Utils;
 using Buildalyzer;
+using Buildalyzer.Environment;
 using Microsoft.Build.Utilities;
 using Microsoft.Build.Framework;
 
@@ -119,58 +120,45 @@ namespace MagicOnion
 
             EnvironmentHelper.Setup();
             var analyzerOptions = new AnalyzerManagerOptions();
-            analyzerOptions.LoggerVerbosity = verbosityLevel.ToLoggerVerbosity();
             if (verbosityLevel > 0)
             {
                 analyzerOptions.LogWriter = Console.Out;
             }
             var manager = new AnalyzerManager(analyzerOptions);
             var projectAnalyzer = manager.GetProject(csprojPath);
+            var buildopts = new EnvironmentOptions();
             if (additionalProperties != null)
             {
                 foreach (var kv in additionalProperties)
                 {
+                    buildopts.GlobalProperties[kv.Key] = kv.Value;
                     projectAnalyzer.SetGlobalProperty(kv.Key, kv.Value);
                 }
             }
-            var compiledProject = projectAnalyzer.Build().Project;
+            if (conditionalSymbols.Any())
+            {
+                buildopts.GlobalProperties["DefineConstants"] = string.Join(",", conditionalSymbols);
+            }
+            var analyzerResults = projectAnalyzer.Build("netstandard2.0", buildopts);
+            // var ws = projectAnalyzer.GetWorkspace();
             var ws = new AdhocWorkspace();
-            if (compiledProject == null)
+            foreach (var result in analyzerResults)
             {
-                throw new Exception("project compilation failed");
-            }
-
-            var workspace = projectAnalyzer.GetWorkspace();
-            workspace.WorkspaceFailed += WorkSpaceFailed;
-            var project = workspace.CurrentSolution.Projects.First();
-            project = project.AddMetadataReferences(externalReferences);
-            var opt = project.ParseOptions as CSharpParseOptions;
-            if (opt != null)
-            {
-                var defineconstants = compiledProject.GetPropertyValue("DefineConstants").Split(';');
-                var langVersion = compiledProject.GetPropertyValue("LangVersion");
-                var features = compiledProject.GetPropertyValue("Features").Split(';').Select(x =>
+                if (result.Succeeded)
                 {
-                    var kv = x.Split('=', 2);
-                    if (kv.Length == 1)
-                    {
-                        return new KeyValuePair<string, string>(kv[0], "true");
-                    }
-                    else if (kv.Length > 1)
-                    {
-                        return new KeyValuePair<string, string>(kv[0], kv[1]);
-                    }
-                    else
-                    {
-                        return new KeyValuePair<string, string>(null, null);
-                    }
-                }).Where(x => x.Key != null).ToArray();
-                opt = opt.WithLanguageVersion(ConvertLanguageVersion(langVersion))
-                    .WithPreprocessorSymbols(defineconstants.Concat(conditionalSymbols))
-                    .WithFeatures(features)
-                    ;
-                project = project.WithParseOptions(opt);
+                    Console.WriteLine($"{result.GetProperty("DefineConstants")}");
+                    result.AddToWorkspace(ws);
+                    break;
+                }
             }
+            if (!ws.CurrentSolution.Projects.Any())
+            {
+                throw new Exception("no succeeded analyzer result found");
+            }
+            var project = ws.CurrentSolution.Projects.First();
+            var parseopts = project.ParseOptions as CSharpParseOptions;
+            Console.WriteLine($"pp symbols: {string.Join("|", parseopts.PreprocessorSymbolNames)}");
+            project = project.WithParseOptions(parseopts.WithPreprocessorSymbols(conditionalSymbols));
             var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
             return compilation;
         }
