@@ -42,7 +42,7 @@ namespace MagicOnion.CodeGenerator
                 { "n|namespace=", "[optional, default=MagicOnion]Set namespace root name", x => { NamespaceRoot = x; } },
                 { "a|asyncsuffix", "[optional, default=false]Use methodName to async suffix", _ => { IsAsyncSuffix = true; } },
                 { "c|conditionalsymbol=", "[optional, default=empty]conditional compiler symbol list separated by ','", x => ConditionalSymbols.AddRange(x.Split(",")) },
-                { "v|verbose=", "[optional, default=None]project compilation output verbosity level(None,Minimal,Normal,Detailed)", level => {
+                { "v|verbose=", "[optional, default=None]project compilation output verbosity level(None,Minimal,Normal,Detailed,Diagnostic)", level => {
                         switch(level.ToLower())
                         {
                             case "none":
@@ -56,6 +56,9 @@ namespace MagicOnion.CodeGenerator
                                 break;
                             case "detailed":
                                 VerbosityLevel = 3;
+                                break;
+                            case "diagnostic":
+                                VerbosityLevel = 4;
                                 break;
                             default:
                                 break;
