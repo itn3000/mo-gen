@@ -14,6 +14,7 @@ using Buildalyzer;
 using Buildalyzer.Environment;
 using Microsoft.Build.Utilities;
 using Microsoft.Build.Framework;
+using MsLogging = Microsoft.Extensions.Logging;
 
 namespace MagicOnion
 {
@@ -30,6 +31,8 @@ namespace MagicOnion
                     return LoggerVerbosity.Normal;
                 case 3:
                     return LoggerVerbosity.Detailed;
+                case 4:
+                    return LoggerVerbosity.Diagnostic;
                 case 0:
                 default:
                     return LoggerVerbosity.Quiet;
@@ -78,10 +81,16 @@ namespace MagicOnion
                 return LanguageVersion.Default;
             }
         }
+
         public static async Task<Compilation> GetCompilationFromProject(string csprojPath, int verbosityLevel,
             Dictionary<string, string> additionalProperties,
             IEnumerable<string> conditionalSymbols)
         {
+            conditionalSymbols = conditionalSymbols != null ? 
+                conditionalSymbols.Where(x => !string.IsNullOrEmpty(x)).ToArray() 
+                : 
+                Enumerable.Empty<string>();
+
             // fucking workaround of resolve reference...
             var externalReferences = new List<PortableExecutableReference>();
             {
@@ -126,6 +135,7 @@ namespace MagicOnion
             }
             var manager = new AnalyzerManager(analyzerOptions);
             var projectAnalyzer = manager.GetProject(csprojPath);
+            projectAnalyzer.AddBuildLogger(new Microsoft.Build.Logging.ConsoleLogger(verbosityLevel.ToLoggerVerbosity()));
             var buildopts = new EnvironmentOptions();
             if (additionalProperties != null)
             {
@@ -137,28 +147,28 @@ namespace MagicOnion
             }
             if (conditionalSymbols.Any())
             {
-                buildopts.GlobalProperties["DefineConstants"] = string.Join(",", conditionalSymbols);
+                buildopts.GlobalProperties["DefineConstants"] = string.Join("%3b", conditionalSymbols);
             }
-            var analyzerResults = projectAnalyzer.Build("netstandard2.0", buildopts);
-            // var ws = projectAnalyzer.GetWorkspace();
-            var ws = new AdhocWorkspace();
-            foreach (var result in analyzerResults)
-            {
-                if (result.Succeeded)
-                {
-                    Console.WriteLine($"{result.GetProperty("DefineConstants")}");
-                    result.AddToWorkspace(ws);
-                    break;
-                }
-            }
-            if (!ws.CurrentSolution.Projects.Any())
+            var analyzerResults = projectAnalyzer.Build(buildopts);
+            var analyzerResult = analyzerResults.FirstOrDefault(x => x.Succeeded);
+            if (analyzerResult == null)
             {
                 throw new Exception("no succeeded analyzer result found");
             }
-            var project = ws.CurrentSolution.Projects.First();
+            var ws = new AdhocWorkspace();
+            var project = analyzerResult.AddToWorkspace(ws);
             var parseopts = project.ParseOptions as CSharpParseOptions;
-            Console.WriteLine($"pp symbols: {string.Join("|", parseopts.PreprocessorSymbolNames)}");
-            project = project.WithParseOptions(parseopts.WithPreprocessorSymbols(conditionalSymbols));
+            if (parseopts != null)
+            {
+                var symbols = analyzerResult.Properties.ContainsKey("DefineConstants") ?
+                    conditionalSymbols.Concat(
+                        analyzerResult.Properties["DefineConstants"].Split(';')
+                    ).OrderBy(x => x).Distinct()
+                    :
+                    conditionalSymbols
+                    ;
+                project = project.WithParseOptions(parseopts.WithPreprocessorSymbols(symbols));
+            }
             var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
             return compilation;
         }
