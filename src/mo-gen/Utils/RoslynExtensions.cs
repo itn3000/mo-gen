@@ -11,8 +11,10 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using MagicOnion.Utils;
 using Buildalyzer;
+using Buildalyzer.Environment;
 using Microsoft.Build.Utilities;
 using Microsoft.Build.Framework;
+using MsLogging = Microsoft.Extensions.Logging;
 
 namespace MagicOnion
 {
@@ -29,6 +31,8 @@ namespace MagicOnion
                     return LoggerVerbosity.Normal;
                 case 3:
                     return LoggerVerbosity.Detailed;
+                case 4:
+                    return LoggerVerbosity.Diagnostic;
                 case 0:
                 default:
                     return LoggerVerbosity.Quiet;
@@ -77,10 +81,16 @@ namespace MagicOnion
                 return LanguageVersion.Default;
             }
         }
+
         public static async Task<Compilation> GetCompilationFromProject(string csprojPath, int verbosityLevel,
             Dictionary<string, string> additionalProperties,
             IEnumerable<string> conditionalSymbols)
         {
+            conditionalSymbols = conditionalSymbols != null ? 
+                conditionalSymbols.Where(x => !string.IsNullOrEmpty(x)).ToArray() 
+                : 
+                Enumerable.Empty<string>();
+
             // fucking workaround of resolve reference...
             var externalReferences = new List<PortableExecutableReference>();
             {
@@ -119,57 +129,45 @@ namespace MagicOnion
 
             EnvironmentHelper.Setup();
             var analyzerOptions = new AnalyzerManagerOptions();
-            analyzerOptions.LoggerVerbosity = verbosityLevel.ToLoggerVerbosity();
             if (verbosityLevel > 0)
             {
                 analyzerOptions.LogWriter = Console.Out;
             }
             var manager = new AnalyzerManager(analyzerOptions);
             var projectAnalyzer = manager.GetProject(csprojPath);
+            projectAnalyzer.AddBuildLogger(new Microsoft.Build.Logging.ConsoleLogger(verbosityLevel.ToLoggerVerbosity()));
+            var buildopts = new EnvironmentOptions();
             if (additionalProperties != null)
             {
                 foreach (var kv in additionalProperties)
                 {
+                    buildopts.GlobalProperties[kv.Key] = kv.Value;
                     projectAnalyzer.SetGlobalProperty(kv.Key, kv.Value);
                 }
             }
-            var compiledProject = projectAnalyzer.Build().Project;
-            var ws = new AdhocWorkspace();
-            if (compiledProject == null)
+            if (conditionalSymbols.Any())
             {
-                throw new Exception("project compilation failed");
+                buildopts.GlobalProperties["DefineConstants"] = string.Join("%3b", conditionalSymbols);
             }
-
-            var workspace = projectAnalyzer.GetWorkspace();
-            workspace.WorkspaceFailed += WorkSpaceFailed;
-            var project = workspace.CurrentSolution.Projects.First();
-            project = project.AddMetadataReferences(externalReferences);
-            var opt = project.ParseOptions as CSharpParseOptions;
-            if (opt != null)
+            var analyzerResults = projectAnalyzer.Build(buildopts);
+            var analyzerResult = analyzerResults.FirstOrDefault(x => x.Succeeded);
+            if (analyzerResult == null)
             {
-                var defineconstants = compiledProject.GetPropertyValue("DefineConstants").Split(';');
-                var langVersion = compiledProject.GetPropertyValue("LangVersion");
-                var features = compiledProject.GetPropertyValue("Features").Split(';').Select(x =>
-                {
-                    var kv = x.Split('=', 2);
-                    if (kv.Length == 1)
-                    {
-                        return new KeyValuePair<string, string>(kv[0], "true");
-                    }
-                    else if (kv.Length > 1)
-                    {
-                        return new KeyValuePair<string, string>(kv[0], kv[1]);
-                    }
-                    else
-                    {
-                        return new KeyValuePair<string, string>(null, null);
-                    }
-                }).Where(x => x.Key != null).ToArray();
-                opt = opt.WithLanguageVersion(ConvertLanguageVersion(langVersion))
-                    .WithPreprocessorSymbols(defineconstants.Concat(conditionalSymbols))
-                    .WithFeatures(features)
+                throw new Exception("no succeeded analyzer result found");
+            }
+            var ws = new AdhocWorkspace();
+            var project = analyzerResult.AddToWorkspace(ws);
+            var parseopts = project.ParseOptions as CSharpParseOptions;
+            if (parseopts != null)
+            {
+                var symbols = analyzerResult.Properties.ContainsKey("DefineConstants") ?
+                    conditionalSymbols.Concat(
+                        analyzerResult.Properties["DefineConstants"].Split(';')
+                    ).OrderBy(x => x).Distinct()
+                    :
+                    conditionalSymbols
                     ;
-                project = project.WithParseOptions(opt);
+                project = project.WithParseOptions(parseopts.WithPreprocessorSymbols(symbols));
             }
             var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
             return compilation;
