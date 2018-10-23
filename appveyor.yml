@@ -7,6 +7,8 @@ build:
   project: mo-gen.sln
   publish_nuget: true
   publish_nuget_symbols: true
+after_build:
+  pwsh: dotnet pack src/mo-gen/mo-gen.csproj
 artifacts:
   - path: "**/*.nupkg"
     name: NuGetPackages
@@ -19,6 +21,7 @@ deploy:
   on:
     APPVEYOR_REPO_TAG: true
     branch: master
+  artifact: NuGetPackages
 - provider: GitHub
   auth_token:
     secure: MFZg3Ryx8cZ9XWIf8qvSE+48pmQc2LPAcPiRQ7bUtPRKj4mXvn+mtZVzPV7tQyX1
