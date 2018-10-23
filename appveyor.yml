@@ -7,8 +7,8 @@ build:
   project: mo-gen.sln
   publish_nuget: true
   publish_nuget_symbols: true
-artifact:
-  NuGetPackages: /.*\.nupkg$/
+artifacts:
+  NuGetPackages: "**/*.nupkg"
 install:
   - dotnet restore
 deploy:
