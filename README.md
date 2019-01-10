@@ -1,3 +1,5 @@
+**Warning: this project is obsolote because MagicOnion project now uses updated code generator**
+
 # The MagicOnion code generator
 
 This is the fork of MagicOnion.CodeGenerator.
